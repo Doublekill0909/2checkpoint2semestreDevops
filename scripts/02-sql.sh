@@ -18,6 +18,26 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 source ./00-vars.sh
 
+# Tenta localizar o sqlcmd no PATH ou em locais padrão do Cloud Shell / Linux
+if ! command -v sqlcmd >/dev/null 2>&1; then
+  for p in /opt/mssql-tools18/bin /opt/mssql-tools/bin "$HOME/.local/bin" "$HOME/bin"; do
+    if [[ -x "${p}/sqlcmd" ]]; then
+      export PATH="${p}:${PATH}"
+      break
+    fi
+  done
+fi
+
+# Se ainda nao encontrar, tenta baixar automaticamente o binario standalone (go-sqlcmd) para ~/.local/bin
+if ! command -v sqlcmd >/dev/null 2>&1; then
+  echo "      sqlcmd nao encontrado no PATH. Tentando baixar binario portatil oficial..."
+  mkdir -p "$HOME/.local/bin"
+  if curl -sSL "https://github.com/microsoft/go-sqlcmd/releases/download/v1.8.2/sqlcmd-linux-amd64.tar.bz2" | tar -xj -C "$HOME/.local/bin" 2>/dev/null; then
+    export PATH="$HOME/.local/bin:${PATH}"
+    echo "      sqlcmd instalado com sucesso em ~/.local/bin/sqlcmd."
+  fi
+fi
+
 if ! command -v sqlcmd >/dev/null 2>&1; then
   echo "ERRO: o sqlcmd nao esta instalado. Rode este script no Azure Cloud Shell"
   echo "      (que ja traz o sqlcmd) ou instale-o: https://aka.ms/sqlcmd"
@@ -55,18 +75,7 @@ az sql server firewall-rule create \
   --start-ip-address 0.0.0.0 --end-ip-address 0.0.0.0 \
   --output none
 echo "      Regra AllowAzureServices (App Service -> Azure SQL) criada."
-
-MEU_IP=$(curl -s --max-time 10 https://api.ipify.org || curl -s --max-time 10 https://ifconfig.me || true)
-if [[ "${MEU_IP}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  az sql server firewall-rule create \
-    --resource-group "${RESOURCE_GROUP}" --server "${SQL_SERVER}" \
-    --name AllowClientIP \
-    --start-ip-address "${MEU_IP}" --end-ip-address "${MEU_IP}" \
-    --output none
-  echo "      Regra AllowClientIP liberando ${MEU_IP} (de onde o sqlcmd vai conectar)."
-else
-  echo "      Nao consegui descobrir o IP publico desta maquina; seguindo so com a regra da Azure."
-fi
+liberar_ip_no_firewall
 az sql server firewall-rule list -g "${RESOURCE_GROUP}" -s "${SQL_SERVER}" \
   --query "[].{Regra:name, Inicio:startIpAddress, Fim:endIpAddress}" -o table
 
@@ -99,21 +108,8 @@ executar_sql() {
 
 echo
 echo "[4/6] Aguardando o banco aceitar conexoes..."
-# Logo depois da criacao, o gateway pode recusar as primeiras conexoes, e
-# uma regra de firewall nova leva alguns segundos para valer.
-for tentativa in $(seq 1 12); do
-  if SQLCMDPASSWORD="${SQL_ADMIN_PASSWORD}" sqlcmd -S "tcp:${SQL_FQDN},1433" -d "${SQL_DB}" \
-       -U "${SQL_ADMIN_USER}" -b -Q "SELECT 1" >/dev/null 2>&1; then
-    echo "      Conexao OK."
-    break
-  fi
-  if (( tentativa == 12 )); then
-    echo "ERRO: o banco nao aceitou conexoes. Confira o firewall e as credenciais do .env."
-    exit 1
-  fi
-  echo "      Ainda nao conectou, nova tentativa em 10s (${tentativa}/12)..."
-  sleep 10
-done
+aguardar_banco "${SQL_FQDN}" "${SQL_ADMIN_USER}" "${SQL_ADMIN_PASSWORD}" || exit 1
+echo "      Conexao OK."
 
 echo
 echo "[5/6] Executando o DDL (scripts/script_bd.sql) como administrador..."

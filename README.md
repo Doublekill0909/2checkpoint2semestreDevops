@@ -8,6 +8,8 @@ Este repositório contém a entrega do **2º Checkpoint do 2º semestre de DevOp
 
 ## 👥 Equipe
 
+**Grupo Vitalis**
+
 | RM | Nome Completo | Turma |
 |:---:|:---|:---:|
 | RM561489 | Ana Flávia Camelo | 2TDSPV |
@@ -67,7 +69,7 @@ Todos os recursos da Azure ficam no Resource Group `rg-rm566234-dimdim` e são c
 
 | Recurso | Nome | Configuração |
 |---|---|---|
-| Resource Group | `rg-rm566234-dimdim` | região `canadacentral` |
+| Resource Group | `rg-rm566234-dimdim` | região `chilecentral` |
 | Plano do App Service | `plan-rm566234-dimdim` | Linux, B1 |
 | Web App | `rm566234-dimdim` | Java SE 21, HTTPS obrigatório, TLS 1.2, Always On, FTP desligado |
 | Servidor Azure SQL | `sql-rm566234-dimdim` | TLS 1.2 mínimo, firewall com o App Service e o Cloud Shell |
@@ -127,14 +129,14 @@ O `.env` guarda os usuários e as senhas do banco e nunca vai para o Git, porque
 | `SQL_ADMIN_USER` / `SQL_ADMIN_PASSWORD` | Administrador do servidor Azure SQL, usado apenas pelos scripts. |
 | `APP_DB_USER` / `APP_DB_PASSWORD` | Usuário da aplicação, com que a Web App se conecta ao banco. |
 
-As senhas precisam seguir a política do Azure SQL: de 8 a 128 caracteres, com pelo menos três destes quatro grupos (maiúsculas, minúsculas, números e símbolos) e sem conter o nome do usuário. O `scripts/00-vars.sh` confere isso antes de criar qualquer recurso.
+Os dois usuários precisam ser diferentes, e é melhor evitar nomes que aparecem no repositório, como o RM ou o nome do projeto. As senhas precisam seguir a política do Azure SQL: de 8 a 128 caracteres, com pelo menos três destes quatro grupos (maiúsculas, minúsculas, números e símbolos) e sem conter o nome do usuário. O `scripts/00-vars.sh` confere tudo isso antes de criar qualquer recurso.
 
 ### 4. Crie os recursos na Azure
 
 Execute os scripts na ordem. Cada um mostra o que criou e qual é o próximo passo.
 
 ```bash
-# 1. Confere login, regiões permitidas e provedores; cria o Resource Group
+# 1. Confere login, regiões permitidas, provedores e serviços da região; cria o Resource Group
 bash scripts/01-resource-group.sh
 
 # 2. Servidor + banco Azure SQL, firewall, DDL das tabelas e usuário da aplicação
@@ -147,7 +149,7 @@ bash scripts/03-monitoramento.sh
 bash scripts/04-webapp.sh
 ```
 
-Subscriptions Azure for Students só aceitam algumas regiões, e a lista muda de aluno para aluno. O script `01` lê essa política e, se `canadacentral` não estiver permitida, mostra as regiões aceitas. Nesse caso, exporte a região escolhida antes de rodar os scripts:
+Subscriptions Azure for Students só aceitam algumas regiões, e a lista muda de aluno para aluno. O script `01` lê essa política e confere se a região oferece todos os serviços usados. Se `chilecentral` não servir, ele mostra as regiões aceitas; nesse caso, exporte a região escolhida antes de rodar os scripts:
 
 ```bash
 export LOCATION=eastus2
@@ -184,19 +186,20 @@ Acesse **https://rm566234-dimdim.azurewebsites.net**. O rodapé de cada página 
 bash scripts/07-consultar-banco.sh
 ```
 
-Esse script executa [`scripts/consultas_crud.sql`](./scripts/consultas_crud.sql) no Azure SQL com o usuário da aplicação e mostra `tb_cliente`, `tb_conta` (com o nome do titular, obtido pela FK) e os totais. Como alternativa, o mesmo arquivo pode ser colado no **Query editor** do banco, no portal da Azure.
+Esse script executa [`scripts/consultas_crud.sql`](./scripts/consultas_crud.sql) no Azure SQL com o usuário da aplicação e mostra `tb_cliente`, `tb_conta` (com o nome do titular, obtido pela FK) e os totais. Antes de consultar, ele libera no firewall o IP atual do Cloud Shell, que muda a cada sessão. Como alternativa, o mesmo arquivo pode ser colado no **Query editor** do banco, no portal da Azure.
 
-Siga esta sequência, que exercita as quatro operações nas duas tabelas:
+Siga esta sequência, que exercita as quatro operações nas duas tabelas e mostra o banco depois de cada uma:
 
 1. Rode `07-consultar-banco.sh` antes de qualquer operação, para mostrar as tabelas vazias.
-2. Cadastre um cliente em **Clientes → Cadastrar cliente** e rode a consulta, que passa a mostrar a linha em `tb_cliente` com `data_cadastro` no horário de Brasília. Cadastre um segundo cliente da mesma forma.
-3. Na ficha do cliente, clique em **Editar**, mude o telefone ou o e-mail, salve e rode a consulta para mostrar a alteração.
-4. Ainda na ficha, clique em **Abrir conta**, escolha o tipo e o saldo inicial e rode a consulta, em que a conta aparece em `tb_conta` com `cliente_id` apontando para o titular. Abra uma segunda conta.
-5. Em **Contas**, clique em **Editar**, mude o tipo e o saldo, desmarque **Conta ativa**, salve e rode a consulta.
-6. Tente excluir um cliente que ainda tem contas. A aplicação recusa e explica o motivo, e a consulta mostra que o cliente continua no banco, o que evidencia a integridade referencial entre as tabelas.
-7. Em **Contas**, exclua uma conta e rode a consulta.
-8. Exclua as contas restantes do cliente, depois o próprio cliente, e rode a consulta.
-9. Para encerrar, compare as listas das telas com o resultado da consulta no banco.
+2. **INSERT em `tb_cliente`**: cadastre um cliente em **Clientes → Cadastrar cliente** e rode a consulta, que passa a mostrar a linha em `tb_cliente` com `data_cadastro` no horário de Brasília.
+3. **INSERT em `tb_cliente`**: cadastre um segundo cliente e rode a consulta.
+4. **UPDATE em `tb_cliente`**: na ficha do primeiro cliente, clique em **Editar**, mude o telefone ou o e-mail, salve e rode a consulta para mostrar a alteração.
+5. **INSERT em `tb_conta`**: ainda na ficha, clique em **Abrir conta**, escolha o tipo e o saldo inicial e rode a consulta, em que a conta aparece em `tb_conta` com `cliente_id` apontando para o titular.
+6. **UPDATE em `tb_conta`**: em **Contas**, clique em **Editar**, mude o tipo e o saldo, desmarque **Conta ativa**, salve e rode a consulta.
+7. **DELETE recusado**: tente excluir o primeiro cliente, que ainda tem a conta. A aplicação recusa e explica o motivo, e a consulta mostra que o cliente continua no banco, o que evidencia a integridade referencial entre as tabelas.
+8. **DELETE em `tb_conta`**: em **Contas**, exclua a conta e rode a consulta.
+9. **DELETE em `tb_cliente`**: exclua o primeiro cliente, que agora não tem contas, e rode a consulta.
+10. **SELECT**: para encerrar, compare as listas das telas **Clientes** e **Contas** com o resultado da consulta no banco.
 
 ### 8. Acompanhe o monitoramento
 
@@ -228,7 +231,7 @@ O script pede o nome do Resource Group como confirmação, apaga todos os recurs
 | [`pom.xml`](./pom.xml) e [`mvnw`](./mvnw) | Build Maven (Java 21, Spring Boot 4.1) com o Maven Wrapper, sem exigir Maven instalado. |
 | [`scripts/script_bd.sql`](./scripts/script_bd.sql) | DDL das tabelas, com restrições, índice e comentários em todas as tabelas e colunas. |
 | [`scripts/script_usuario_app.sql`](./scripts/script_usuario_app.sql) | Template do usuário contido da aplicação, com mínimo privilégio. |
-| [`scripts/00-vars.sh`](./scripts/00-vars.sh) | Variáveis centralizadas e validação do `.env` (nomes dos recursos, sem segredos). |
+| [`scripts/00-vars.sh`](./scripts/00-vars.sh) | Variáveis centralizadas, validação do `.env` e funções de acesso ao banco usadas pelos scripts (nomes dos recursos, sem segredos). |
 | [`scripts/01-resource-group.sh`](./scripts/01-resource-group.sh) | Conferências da subscription e criação do Resource Group. |
 | [`scripts/02-sql.sh`](./scripts/02-sql.sh) | Servidor e banco Azure SQL, firewall, execução do DDL e criação do usuário da aplicação. |
 | [`scripts/03-monitoramento.sh`](./scripts/03-monitoramento.sh) | Log Analytics workspace, Application Insights e diagnostic settings do banco. |
@@ -250,10 +253,10 @@ Os scripts automatizam o processo, mas os comandos centrais que eles executam s�
 
 ```bash
 # Resource Group
-az group create --name rg-rm566234-dimdim --location canadacentral
+az group create --name rg-rm566234-dimdim --location chilecentral
 
 # Azure SQL Database (PaaS)
-az sql server create -g rg-rm566234-dimdim -n sql-rm566234-dimdim -l canadacentral \
+az sql server create -g rg-rm566234-dimdim -n sql-rm566234-dimdim -l chilecentral \
   --admin-user <SQL_ADMIN_USER> --admin-password <SQL_ADMIN_PASSWORD> --minimal-tls-version 1.2
 az sql server firewall-rule create -g rg-rm566234-dimdim -s sql-rm566234-dimdim \
   -n AllowAzureServices --start-ip-address 0.0.0.0 --end-ip-address 0.0.0.0
@@ -284,7 +287,7 @@ gh workflow run deploy.yml --repo Doublekill0909/2checkpoint2semestreDevops --re
 
 ## 🔌 API REST (JSON das operações)
 
-Os exemplos abaixo usam a URL da aplicação na nuvem e foram gerados a partir de respostas reais da aplicação. Em caso de erro, a API responde no formato `application/problem+json` (RFC 9457).
+Os exemplos abaixo usam a URL da aplicação na nuvem e mostram o corpo de cada resposta. Em caso de erro, a API responde no formato `application/problem+json` (RFC 9457).
 
 ```bash
 URL=https://rm566234-dimdim.azurewebsites.net
@@ -327,13 +330,59 @@ A resposta é `201 Created`, com o cabeçalho `Location` apontando para `/api/cl
 }
 ```
 
+**GET** `/api/clientes`
+
+```bash
+curl -i "$URL/api/clientes"
+```
+
+A resposta é `200 OK`, com a lista dos clientes em ordem alfabética e a quantidade de contas de cada um:
+
+```json
+[
+  {
+    "id": 7,
+    "nome": "Beatriz Ramos",
+    "cpf": "39053344705",
+    "email": "beatriz.ramos@exemplo.com",
+    "telefone": "(11) 97777-1234",
+    "dataNascimento": "1994-08-12",
+    "dataCadastro": "2026-10-05T22:07:13",
+    "quantidadeContas": 0
+  },
+  {
+    "id": 5,
+    "nome": "Carlos Mendes",
+    "cpf": "52998224725",
+    "email": "carlos.mendes@exemplo.com",
+    "telefone": null,
+    "dataNascimento": "1988-02-29",
+    "dataCadastro": "2026-10-05T21:58:40",
+    "quantidadeContas": 2
+  }
+]
+```
+
 **GET** `/api/clientes/{id}`
 
 ```bash
 curl -i "$URL/api/clientes/7"
 ```
 
-A resposta é `200 OK`, com o mesmo formato do POST, e `GET /api/clientes` devolve uma lista de objetos nesse formato.
+A resposta é `200 OK`, com um único cliente:
+
+```json
+{
+  "id": 7,
+  "nome": "Beatriz Ramos",
+  "cpf": "39053344705",
+  "email": "beatriz.ramos@exemplo.com",
+  "telefone": "(11) 97777-1234",
+  "dataNascimento": "1994-08-12",
+  "dataCadastro": "2026-10-05T22:07:13",
+  "quantidadeContas": 0
+}
+```
 
 **PUT** `/api/clientes/{id}`
 
@@ -423,7 +472,25 @@ A resposta é `201 Created`, e a agência, o número e a data de abertura são d
 curl -i "$URL/api/contas?clienteId=7"
 ```
 
-A resposta é `200 OK`, com a lista de contas do titular no mesmo formato do POST. Sem o parâmetro, `GET /api/contas` lista todas as contas.
+A resposta é `200 OK`, com a lista de contas do titular, das mais novas para as mais antigas:
+
+```json
+[
+  {
+    "id": 7,
+    "agencia": "0001",
+    "numero": "10311-0",
+    "tipo": "CORRENTE",
+    "saldo": 2500.00,
+    "ativa": true,
+    "dataAbertura": "2026-10-05",
+    "clienteId": 7,
+    "clienteNome": "Beatriz Ramos Alves"
+  }
+]
+```
+
+Sem o parâmetro, `GET /api/contas` lista todas as contas nesse formato, e `GET /api/contas/{id}` devolve uma única conta.
 
 **PUT** `/api/contas/{id}`
 
@@ -524,10 +591,10 @@ A regra de firewall `AllowAzureServices` é o ponto em que esta entrega troca se
 
 | Sintoma | Causa provável e solução |
 |---|---|
-| `RequestDisallowedByPolicy` ou o script `01` lista outras regiões | A subscription de estudante não aceita a região. Rode `export LOCATION=<região permitida>` e repita a partir do script `01`. |
+| `RequestDisallowedByPolicy`, ou o script `01` lista outras regiões ou aponta um serviço indisponível | A subscription de estudante não aceita a região, ou a região não oferece algum dos serviços. Rode `export LOCATION=<região permitida>` e repita a partir do script `01`. |
 | A criação do plano do App Service falha por cota (`quota`) | Algumas subscriptions de estudante não têm cota para o B1 na região. Rode `export APP_SERVICE_SKU=F1` e repita o script `04`; o plano gratuito funciona, mas sem Always On, então a primeira requisição depois de um período ocioso é mais lenta. |
 | `02-sql.sh` informa que o `sqlcmd` não está instalado | O script foi executado fora do Cloud Shell. Execute-o no Azure Cloud Shell, que já traz o `sqlcmd`. |
-| O banco recusa conexões no `02-sql.sh` ou no `07-consultar-banco.sh` | O IP de onde o comando roda mudou. Rode o `02-sql.sh` de novo, que é idempotente e recria a regra `AllowClientIP`. |
+| O banco recusa conexões no `02-sql.sh` ou no `07-consultar-banco.sh` | Os dois scripts atualizam a regra `AllowClientIP` com o IP atual a cada execução, então a causa provável são as credenciais do `.env`. Confira usuários e senhas; se o `.env` mudou depois do `02-sql.sh`, rode-o de novo, que é idempotente e redefine a senha do usuário da aplicação. |
 | O deploy termina, mas o health check do workflow não responde `UP` | A JVM não conseguiu subir. Veja o motivo com `az webapp log tail -g rg-rm566234-dimdim -n rm566234-dimdim`; um erro de `Schema validation` indica que o DDL não foi aplicado (rode o `02-sql.sh`). |
 | `401 Unauthorized` no passo de deploy do workflow | O publish profile ficou desatualizado. Rode o `05-github-actions.sh` de novo, que regrava o secret. |
 | A telemetria não aparece no Application Insights | Os dados levam de um a três minutos para chegar. O **Live metrics** mostra o tráfego na hora. |

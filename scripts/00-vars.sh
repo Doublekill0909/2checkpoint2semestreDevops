@@ -29,12 +29,13 @@ export PROJETO="dimdim"
 # ---------------------------------------------------------------------
 # Localizacao e Resource Group
 #
-# canadacentral foi a regiao aceita pela subscription Azure for Students
-# do grupo na Sprint 3. Essas subscriptions so permitem algumas regioes
+# chilecentral e uma das regioes aceitas pela subscription Azure for
+# Students do grupo. Essas subscriptions so permitem algumas regioes
 # (politica "Allowed resource deployment regions"); o 01-resource-group.sh
-# confere isso antes de criar qualquer coisa.
+# confere a politica e se a regiao oferece todos os servicos usados antes
+# de criar qualquer coisa.
 # ---------------------------------------------------------------------
-export LOCATION="${LOCATION:-canadacentral}"
+export LOCATION="${LOCATION:-chilecentral}"
 export RESOURCE_GROUP="${RESOURCE_GROUP:-rg-${RM}-${PROJETO}}"
 
 # ---------------------------------------------------------------------
@@ -93,8 +94,10 @@ TAGS=(projeto="${PROJETO}" grupo="${GRUPO}" rm="${RM}" disciplina=devops-cloud)
 ENV_FILE="${PROJECT_ROOT}/.env"
 if [[ -f "${ENV_FILE}" ]]; then
   set -a
+  # O tr descarta o CR de um .env salvo no Windows (CRLF); sem isso, cada
+  # valor terminaria com um "\r" invisivel e a validacao abaixo o recusaria.
   # shellcheck disable=SC1090
-  source "${ENV_FILE}"
+  source <(tr -d '\r' < "${ENV_FILE}")
   set +a
 else
   echo "ERRO: arquivo .env nao encontrado em ${ENV_FILE}"
@@ -137,11 +140,71 @@ for par in "SQL_ADMIN_USER:SQL_ADMIN_PASSWORD" "APP_DB_USER:APP_DB_PASSWORD"; do
 done
 unset par var_usuario var_senha
 
+# A aplicacao conecta com um usuario proprio, de minimo privilegio. Com o
+# mesmo nome do administrador, o usuario contido criado pelo 02-sql.sh
+# passaria a responder pelo login do administrador dentro do banco, e o
+# administrador deixaria de conseguir conectar nele.
+if [[ "${APP_DB_USER,,}" == "${SQL_ADMIN_USER,,}" ]]; then
+  echo "ERRO: APP_DB_USER e SQL_ADMIN_USER precisam ser usuarios diferentes no .env."
+  return 1 2>/dev/null || exit 1
+fi
+
 case "${SQL_ADMIN_USER,,}" in
   admin|administrator|sa|root|dbmanager|loginmanager|guest|public|dbo)
     echo "ERRO: '${SQL_ADMIN_USER}' e um nome reservado pelo Azure SQL. Escolha outro no .env."
     return 1 2>/dev/null || exit 1 ;;
 esac
+
+# ---------------------------------------------------------------------
+# Acesso ao Azure SQL a partir de onde os scripts rodam (Cloud Shell).
+# Usado pelo 02-sql.sh e pelo 07-consultar-banco.sh.
+# ---------------------------------------------------------------------
+
+# Libera o IP publico desta maquina na regra de firewall AllowClientIP. O
+# Cloud Shell ganha um IP novo a cada sessao, entao a regra criada pelo
+# 02-sql.sh deixa de valer quando a sessao expira; por isso ela e conferida
+# de novo antes de cada consulta.
+liberar_ip_no_firewall() {
+  local ip anterior
+  ip=$(curl -s --max-time 10 https://api.ipify.org || curl -s --max-time 10 https://ifconfig.me || true)
+  if [[ ! "${ip}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "      Nao consegui descobrir o IP publico desta maquina; a regra AllowClientIP nao foi atualizada."
+    return 0
+  fi
+  anterior=$(az sql server firewall-rule show -g "${RESOURCE_GROUP}" -s "${SQL_SERVER}" \
+    -n AllowClientIP --query startIpAddress -o tsv 2>/dev/null || true)
+  if [[ "${anterior}" == "${ip}" ]]; then
+    echo "      Regra AllowClientIP ja libera ${ip}."
+    return 0
+  fi
+  az sql server firewall-rule create \
+    --resource-group "${RESOURCE_GROUP}" --server "${SQL_SERVER}" \
+    --name AllowClientIP \
+    --start-ip-address "${ip}" --end-ip-address "${ip}" \
+    --output none
+  echo "      Regra AllowClientIP liberando ${ip} (de onde o sqlcmd vai conectar)."
+}
+
+# Espera o banco aceitar uma conexao do usuario informado. Logo depois da
+# criacao do banco, o gateway pode recusar as primeiras conexoes, e uma
+# regra de firewall nova leva alguns segundos para valer. A senha chega ao
+# sqlcmd pela variavel SQLCMDPASSWORD, e nao pela linha de comando (-P),
+# que ficaria visivel na lista de processos.
+aguardar_banco() {
+  local fqdn="$1" usuario="$2" senha="$3" tentativa
+  for tentativa in $(seq 1 12); do
+    if SQLCMDPASSWORD="${senha}" sqlcmd -S "tcp:${fqdn},1433" -d "${SQL_DB}" \
+         -U "${usuario}" -b -Q "SELECT 1" >/dev/null 2>&1; then
+      return 0
+    fi
+    if (( tentativa == 12 )); then
+      echo "ERRO: o banco nao aceitou conexoes de ${usuario}. Confira o firewall e as credenciais do .env."
+      return 1
+    fi
+    echo "      Ainda nao conectou, nova tentativa em 10s (${tentativa}/12)..."
+    sleep 10
+  done
+}
 
 # Pasta para artefatos gerados em tempo de execucao (SQL com senha).
 # Esta no .gitignore -- nada daqui vai para o repositorio.

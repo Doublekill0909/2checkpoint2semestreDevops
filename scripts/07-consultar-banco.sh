@@ -8,7 +8,8 @@
 # video que o dado chegou ao banco na nuvem.
 #
 # Conecta com o usuario da aplicacao (APP_DB_USER), o mesmo que o App
-# Service usa, e nao com o administrador.
+# Service usa, e nao com o administrador. Antes de consultar, libera no
+# firewall o IP atual do Cloud Shell, que muda a cada sessao.
 # =====================================================================
 set -euo pipefail
 
@@ -22,6 +23,8 @@ if ! command -v sqlcmd >/dev/null 2>&1; then
 fi
 
 SQL_FQDN=$(az sql server show -g "${RESOURCE_GROUP}" -n "${SQL_SERVER}" --query fullyQualifiedDomainName -o tsv)
+liberar_ip_no_firewall
+aguardar_banco "${SQL_FQDN}" "${APP_DB_USER}" "${APP_DB_PASSWORD}" || exit 1
 
 echo "Consultando ${SQL_FQDN} / ${SQL_DB} em $(TZ=America/Sao_Paulo date '+%d/%m/%Y %H:%M:%S') (Brasilia)"
 SQLCMDPASSWORD="${APP_DB_PASSWORD}" sqlcmd \

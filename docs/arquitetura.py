@@ -63,7 +63,7 @@ with Diagram(
     shell = AzureCloudShell("Azure Cloud Shell\naz CLI + sqlcmd + gh\n(scripts/01 a 07)")
 
     with Cluster("Assinatura Azure for Students", graph_attr=cluster("#f3f8fd", "#0078d4")):
-        with Cluster("Resource Group rg-rm566234-dimdim (canadacentral)", graph_attr=cluster("#ffffff", "#5e9cd6")):
+        with Cluster("Resource Group rg-rm566234-dimdim (chilecentral)", graph_attr=cluster("#ffffff", "#5e9cd6")):
             with Cluster("App Service Plan B1 (Linux)", graph_attr=cluster("#fffbe6", "#d4a600")):
                 plano = AppServicePlans("plan-rm566234-dimdim")
                 webapp = AppServices("Web App rm566234-dimdim\nJava SE 21, Spring Boot 4\nThymeleaf + API REST")
@@ -78,7 +78,7 @@ with Diagram(
     plano - Edge(style="dotted", color="#d4a600", arrowhead="none") - webapp
 
     usuarios >> Edge(label="HTTPS (TLS 1.2)", color="#1f2430", penwidth="2") >> webapp
-    webapp >> Edge(label="JDBC 1433 com TLS\nusuário dimdim_app\n(leitura e escrita)", color="#3a8f3a", penwidth="2") >> banco
+    webapp >> Edge(label="JDBC 1433 com TLS\nusuário da aplicação\n(leitura e escrita)", color="#3a8f3a", penwidth="2") >> banco
     webapp >> Edge(label="agente Java: requisições,\nchamadas SQL, logs, exceções", color="#8a5cc7") >> appinsights
     appinsights >> Edge(label="telemetria", color="#8a5cc7") >> workspace
     banco >> Edge(xlabel="métricas e logs do banco\n(diagnostic settings)", style="dashed", color="#8a5cc7") >> workspace

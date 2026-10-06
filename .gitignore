@@ -47,6 +47,9 @@ build/
 .DS_Store
 Thumbs.db
 
+# Enunciado do professor: material com reproducao proibida, fica so local
+enunciado/
+
 # Configuracao pessoal de agentes (nao versionada)
 .claude/
 CLAUDE.md

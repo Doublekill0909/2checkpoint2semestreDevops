@@ -25,12 +25,12 @@ class ConfiguracaoDotenvTest {
 
     @Test
     void carregaVariavelDoArquivo(@TempDir Path pasta) throws IOException {
-        Path env = escreverEnv(pasta, "DB_USER=dimdim_app\n");
+        Path env = escreverEnv(pasta, "DB_USER=usuario_teste\n");
         var environment = new StandardEnvironment();
 
         carregador.carregar(environment, env);
 
-        assertThat(environment.getProperty("DB_USER")).isEqualTo("dimdim_app");
+        assertThat(environment.getProperty("DB_USER")).isEqualTo("usuario_teste");
     }
 
     @Test
@@ -38,7 +38,7 @@ class ConfiguracaoDotenvTest {
         Path env = escreverEnv(pasta, """
                 # comentario no topo
 
-                DB_USER = dimdim_app
+                DB_USER = usuario_teste
 
                 # outro comentario
                 DB_PASSWORD=senha
@@ -47,7 +47,7 @@ class ConfiguracaoDotenvTest {
 
         carregador.carregar(environment, env);
 
-        assertThat(environment.getProperty("DB_USER")).isEqualTo("dimdim_app");
+        assertThat(environment.getProperty("DB_USER")).isEqualTo("usuario_teste");
         assertThat(environment.getProperty("DB_PASSWORD")).isEqualTo("senha");
     }
 
