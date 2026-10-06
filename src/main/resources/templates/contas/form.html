@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${contaId} ? 'Editar conta' : 'Abrir conta')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: topo('contas')}"></header>
+
+<main class="pagina pagina--estreita">
+    <a class="voltar" th:href="@{/contas}">Voltar para contas</a>
+    <h1 th:text="${contaId} ? 'Editar conta' : 'Abrir conta'">Abrir conta</h1>
+
+    <form class="formulario" method="post" novalidate th:object="${conta}"
+          th:action="${contaId} ? @{/contas/{id}(id=${contaId})} : @{/contas}">
+
+        <div class="alerta alerta--erro" th:if="${#fields.hasGlobalErrors()}" role="alert">
+            <p th:each="mensagem : ${#fields.globalErrors()}" th:text="${mensagem}">Erro geral.</p>
+        </div>
+
+        <!-- Abertura: o operador escolhe o titular entre os clientes cadastrados. -->
+        <div class="campo" th:if="${contaId == null}" th:classappend="${#fields.hasErrors('clienteId')} ? 'campo--erro'">
+            <label for="clienteId">Titular</label>
+            <select id="clienteId" th:field="*{clienteId}" required>
+                <option value="">Selecione o cliente</option>
+                <option th:each="cliente : ${clientes}" th:value="${cliente.id}"
+                        th:text="${cliente.nome} + ' (CPF ' + ${@fmt.cpf(cliente.cpf)} + ')'">Cliente</option>
+            </select>
+            <p class="campo__ajuda" th:if="${clientes.isEmpty()}">
+                Nenhum cliente cadastrado. <a th:href="@{/clientes/novo}">Cadastre um cliente</a> antes de abrir a conta.
+            </p>
+            <p class="campo__erro" th:if="${#fields.hasErrors('clienteId')}" th:errors="*{clienteId}">Erro no titular.</p>
+        </div>
+
+        <!-- Edição: titular, agência, número e abertura não mudam. -->
+        <div th:if="${contaId != null}">
+            <input type="hidden" th:field="*{clienteId}">
+            <dl class="ficha ficha--compacta">
+                <div>
+                    <dt>Titular</dt>
+                    <dd th:text="${contaAtual.clienteNome}">Titular</dd>
+                </div>
+                <div>
+                    <dt>Agência / conta</dt>
+                    <dd class="numero-conta" th:text="${contaAtual.agencia} + ' / ' + ${contaAtual.numero}">0001 / 12345-6</dd>
+                </div>
+                <div>
+                    <dt>Abertura</dt>
+                    <dd th:text="${@fmt.data(contaAtual.dataAbertura)}">01/01/2026</dd>
+                </div>
+            </dl>
+            <p class="campo__erro" th:if="${#fields.hasErrors('clienteId')}" th:errors="*{clienteId}">Erro no titular.</p>
+        </div>
+
+        <fieldset class="campo" th:classappend="${#fields.hasErrors('tipo')} ? 'campo--erro'">
+            <legend>Tipo de conta</legend>
+            <div class="opcoes">
+                <label class="opcao" th:each="tipo : ${tiposDeConta}">
+                    <input type="radio" th:field="*{tipo}" th:value="${tipo}">
+                    <span th:text="${tipo.descricao}">Conta corrente</span>
+                </label>
+            </div>
+            <p class="campo__erro" th:if="${#fields.hasErrors('tipo')}" th:errors="*{tipo}">Erro no tipo.</p>
+        </fieldset>
+
+        <div class="campo" th:classappend="${#fields.hasErrors('saldo')} ? 'campo--erro'">
+            <label for="saldo" th:text="${contaId} ? 'Saldo (R$)' : 'Saldo inicial (R$)'">Saldo inicial (R$)</label>
+            <input id="saldo" type="number" th:field="*{saldo}" step="0.01" min="0" inputmode="decimal" required>
+            <p class="campo__erro" th:if="${#fields.hasErrors('saldo')}" th:errors="*{saldo}">Erro no saldo.</p>
+        </div>
+
+        <div class="campo">
+            <label class="opcao opcao--caixa">
+                <input type="checkbox" th:field="*{ativa}">
+                <span>Conta ativa</span>
+            </label>
+            <p class="campo__ajuda">Uma conta inativa continua no banco, mas não entra no saldo total do painel.</p>
+        </div>
+
+        <p class="campo__ajuda" th:if="${contaId == null}">
+            A agência 0001, o número da conta e a data de abertura são definidos pelo sistema.
+        </p>
+
+        <div class="formulario__acoes">
+            <button type="submit" class="botao botao--primario"
+                    th:text="${contaId} ? 'Salvar alterações' : 'Abrir conta'">Abrir conta</button>
+            <a class="botao" th:href="@{/contas}">Cancelar</a>
+        </div>
+    </form>
+</main>
+
+<footer th:replace="~{fragments/layout :: rodape}"></footer>
+</body>
+</html>

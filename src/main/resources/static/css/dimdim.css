@@ -1,0 +1,614 @@
+/* =====================================================================
+   DimDim - folha de estilo unica do front end.
+
+   Paleta: o amarelo da marca ocupa so a faixa do topo e os botoes de acao
+   principal; o restante da interface e tinta grafite sobre fundo claro,
+   para que os numeros (CPF, contas, saldos) tenham o maximo de leitura.
+   ===================================================================== */
+
+:root {
+    --amarelo: #ffd60a;
+    --amarelo-forte: #f2c200;
+    --grafite: #1f2430;
+    --grafite-suave: #4b5466;
+    --nevoa: #f3f5f8;
+    --papel: #ffffff;
+    --linha: #d9dee7;
+    --verde: #0f7b4f;
+    --verde-fundo: #e5f4ec;
+    --vermelho: #b42318;
+    --vermelho-fundo: #fdecea;
+
+    --fonte-texto: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+    --fonte-titulo: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+
+    --largura: 72rem;
+    --largura-estreita: 40rem;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--nevoa);
+    color: var(--grafite);
+    font-family: var(--fonte-texto);
+    font-size: 1rem;
+    line-height: 1.55;
+}
+
+h1,
+h2 {
+    font-family: var(--fonte-titulo);
+    line-height: 1.15;
+    margin: 0;
+}
+
+h1 {
+    font-size: clamp(1.9rem, 1.4rem + 1.6vw, 2.45rem);
+    font-weight: 800;
+    letter-spacing: -0.015em;
+}
+
+h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+a {
+    color: var(--grafite);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+}
+
+a:hover {
+    text-decoration-thickness: 2px;
+}
+
+:focus-visible {
+    outline: 3px solid var(--grafite);
+    outline-offset: 2px;
+}
+
+.oculto {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------------
+   Topo: a faixa amarela e o unico bloco de cor forte da interface.
+   --------------------------------------------------------------------- */
+.topo {
+    background: var(--amarelo);
+    border-bottom: 3px solid var(--grafite);
+}
+
+.topo__conteudo {
+    max-width: var(--largura);
+    margin: 0 auto;
+    padding: 1.1rem 1.5rem 0.9rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.75rem 2rem;
+}
+
+.marca {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    text-decoration: none;
+}
+
+.marca__nome {
+    font-family: var(--fonte-titulo);
+    font-size: 2.6rem;
+    font-weight: 800;
+    letter-spacing: -0.045em;
+    line-height: 0.9;
+}
+
+.marca__descricao {
+    font-size: 0.95rem;
+    color: var(--grafite);
+}
+
+.menu {
+    display: flex;
+    gap: 1.5rem;
+}
+
+.menu__item {
+    padding: 0.25rem 0;
+    font-weight: 600;
+    text-decoration: none;
+    border-bottom: 3px solid transparent;
+}
+
+.menu__item:hover {
+    border-bottom-color: var(--grafite-suave);
+}
+
+.menu__item--ativo {
+    border-bottom-color: var(--grafite);
+}
+
+/* ---------------------------------------------------------------------
+   Estrutura das paginas
+   --------------------------------------------------------------------- */
+.pagina {
+    flex: 1;
+    width: 100%;
+    max-width: var(--largura);
+    margin: 0 auto;
+    padding: 2.25rem 1.5rem 3.5rem;
+}
+
+.pagina--estreita {
+    max-width: calc(var(--largura-estreita) + 3rem);
+}
+
+.pagina > h1 {
+    margin-bottom: 1.75rem;
+}
+
+.cabecalho-pagina {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem 2rem;
+    margin-bottom: 1.75rem;
+}
+
+.cabecalho-bloco {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.subtitulo {
+    margin: 0.35rem 0 0;
+    color: var(--grafite-suave);
+}
+
+.voltar {
+    display: inline-block;
+    margin-bottom: 1rem;
+    color: var(--grafite-suave);
+}
+
+.bloco {
+    margin-top: 2.75rem;
+}
+
+.bloco > h2 {
+    margin-bottom: 1rem;
+}
+
+.acoes {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.acoes form {
+    margin: 0;
+}
+
+.filtro,
+.vazio {
+    color: var(--grafite-suave);
+}
+
+.vazio {
+    margin: 0;
+    padding: 1.5rem;
+    background: var(--papel);
+    border: 1px dashed var(--linha);
+    border-radius: 6px;
+}
+
+/* ---------------------------------------------------------------------
+   Painel inicial: o resumo e uma frase, como o rodape de um extrato.
+   --------------------------------------------------------------------- */
+.resumo {
+    padding-bottom: 2.25rem;
+    border-bottom: 1px solid var(--linha);
+}
+
+.resumo__frase {
+    max-width: 22em;
+    font-size: clamp(1.75rem, 1.2rem + 2vw, 2.75rem);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+.resumo__frase strong {
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+.resumo__nota {
+    margin: 0.9rem 0 1.5rem;
+    color: var(--grafite-suave);
+}
+
+/* ---------------------------------------------------------------------
+   Botoes
+   --------------------------------------------------------------------- */
+.botao {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    padding: 0.55rem 1.3rem;
+    border: 2px solid var(--grafite);
+    border-radius: 999px;
+    background: var(--papel);
+    color: var(--grafite);
+    font: inherit;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.botao:hover {
+    background: var(--nevoa);
+}
+
+.botao--primario {
+    background: var(--amarelo);
+}
+
+.botao--primario:hover {
+    background: var(--amarelo-forte);
+}
+
+.botao--perigo {
+    border-color: var(--vermelho);
+    color: var(--vermelho);
+}
+
+.botao--perigo:hover {
+    background: var(--vermelho-fundo);
+}
+
+.link-perigo {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--vermelho);
+    font: inherit;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+    cursor: pointer;
+}
+
+/* ---------------------------------------------------------------------
+   Tabelas: numeros alinhados a direita e em algarismos tabulares, para
+   que valores e contas fiquem em coluna como num extrato.
+   --------------------------------------------------------------------- */
+.tabela {
+    overflow-x: auto;
+    background: var(--papel);
+    border: 1px solid var(--linha);
+    border-radius: 6px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+}
+
+th,
+td {
+    padding: 0.8rem 1rem;
+    text-align: left;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+th {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--grafite-suave);
+    border-bottom: 2px solid var(--grafite);
+}
+
+tbody tr + tr td {
+    border-top: 1px solid var(--linha);
+}
+
+tbody tr:hover td {
+    background: #fafbfc;
+}
+
+.num {
+    text-align: right;
+}
+
+.numero-conta,
+.cpf {
+    letter-spacing: 0.02em;
+}
+
+.acoes-linha {
+    text-align: right;
+}
+
+.acoes-linha a,
+.acoes-linha form {
+    display: inline;
+    margin-left: 1rem;
+}
+
+.situacao {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 600;
+}
+
+.situacao::before {
+    content: "";
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.situacao--ativa {
+    color: var(--verde);
+}
+
+.situacao--inativa {
+    color: var(--grafite-suave);
+}
+
+/* ---------------------------------------------------------------------
+   Ficha do cliente e dados fixos da conta
+   --------------------------------------------------------------------- */
+.ficha {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: 1.25rem 2rem;
+    margin: 0;
+    padding: 1.5rem;
+    background: var(--papel);
+    border: 1px solid var(--linha);
+    border-radius: 6px;
+}
+
+.ficha--compacta {
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    margin-bottom: 1.5rem;
+    padding: 1.1rem 1.25rem;
+}
+
+.ficha dt {
+    font-size: 0.875rem;
+    color: var(--grafite-suave);
+}
+
+.ficha dd {
+    margin: 0.15rem 0 0;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+/* ---------------------------------------------------------------------
+   Formularios
+   --------------------------------------------------------------------- */
+.formulario {
+    display: grid;
+    gap: 1.4rem;
+}
+
+.campo {
+    display: grid;
+    gap: 0.4rem;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+}
+
+.campo label,
+.campo legend {
+    font-weight: 700;
+    padding: 0;
+}
+
+.opcional {
+    font-weight: 400;
+    color: var(--grafite-suave);
+}
+
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+input[type="date"],
+input[type="number"],
+select {
+    width: 100%;
+    min-height: 2.9rem;
+    padding: 0.55rem 0.8rem;
+    border: 2px solid var(--linha);
+    border-radius: 8px;
+    background: var(--papel);
+    color: var(--grafite);
+    font: inherit;
+}
+
+input:hover,
+select:hover {
+    border-color: var(--grafite-suave);
+}
+
+input:focus-visible,
+select:focus-visible {
+    border-color: var(--grafite);
+    outline-offset: 1px;
+}
+
+.campo--erro input,
+.campo--erro select {
+    border-color: var(--vermelho);
+}
+
+.campo__ajuda {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--grafite-suave);
+}
+
+.campo__erro {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--vermelho);
+}
+
+.opcoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-top: 0.2rem;
+}
+
+.opcao {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 0.95rem;
+    border: 2px solid var(--linha);
+    border-radius: 8px;
+    background: var(--papel);
+    font-weight: 400;
+    cursor: pointer;
+}
+
+.opcao:has(input:checked) {
+    border-color: var(--grafite);
+    font-weight: 700;
+}
+
+.campo label.opcao--caixa {
+    font-weight: 600;
+    justify-self: start;
+}
+
+.opcao input {
+    width: 1.1rem;
+    height: 1.1rem;
+    margin: 0;
+    accent-color: var(--grafite);
+}
+
+.formulario__acoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding-top: 0.5rem;
+}
+
+/* ---------------------------------------------------------------------
+   Alertas
+   --------------------------------------------------------------------- */
+.alertas:empty {
+    display: none;
+}
+
+.alerta {
+    margin: 0 0 1.5rem;
+    padding: 0.9rem 1.1rem;
+    border-left: 5px solid;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.alerta p {
+    margin: 0;
+}
+
+.alerta--sucesso {
+    background: var(--verde-fundo);
+    border-color: var(--verde);
+}
+
+.alerta--erro {
+    background: var(--vermelho-fundo);
+    border-color: var(--vermelho);
+}
+
+.erro__mensagem {
+    margin: 1rem 0 0;
+    font-size: 1.15rem;
+}
+
+/* ---------------------------------------------------------------------
+   Rodape
+   --------------------------------------------------------------------- */
+.rodape {
+    border-top: 1px solid var(--linha);
+    background: var(--papel);
+    color: var(--grafite-suave);
+    font-size: 0.9rem;
+}
+
+.rodape__conteudo {
+    max-width: var(--largura);
+    margin: 0 auto;
+    padding: 1.25rem 1.5rem;
+}
+
+.rodape p {
+    margin: 0.2rem 0;
+}
+
+/* ---------------------------------------------------------------------
+   Telas estreitas
+   --------------------------------------------------------------------- */
+@media (max-width: 40rem) {
+    .topo__conteudo,
+    .pagina,
+    .rodape__conteudo {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    .marca__nome {
+        font-size: 2.1rem;
+    }
+
+    .pagina {
+        padding-top: 1.5rem;
+    }
+
+    th,
+    td {
+        padding: 0.7rem 0.75rem;
+    }
+}

@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Erro')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: topo('')}"></header>
+
+<main class="pagina pagina--estreita">
+    <h1 th:text="${status == 404} ? 'Página ou registro não encontrado' : 'Não foi possível concluir a operação'">
+        Não foi possível concluir a operação</h1>
+    <p class="erro__mensagem" th:if="${message != null and !#strings.isEmpty(message)}" th:text="${message}">Detalhe do erro.</p>
+    <p class="subtitulo" th:text="${'Código HTTP ' + status + (error != null ? ' (' + error + ')' : '')}">Código HTTP 500</p>
+    <div class="acoes">
+        <a class="botao botao--primario" th:href="@{/}">Voltar ao início</a>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: rodape}"></footer>
+</body>
+</html>

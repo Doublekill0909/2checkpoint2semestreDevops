@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Clientes')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: topo('clientes')}"></header>
+
+<main class="pagina">
+    <div th:replace="~{fragments/layout :: alertas}"></div>
+
+    <div class="cabecalho-pagina">
+        <div>
+            <h1>Clientes</h1>
+            <p class="subtitulo"
+               th:text="${clientes.size() == 1 ? '1 cliente cadastrado' : clientes.size() + ' clientes cadastrados'}">
+                0 clientes cadastrados</p>
+        </div>
+        <a class="botao botao--primario" th:href="@{/clientes/novo}">Cadastrar cliente</a>
+    </div>
+
+    <p class="vazio" th:if="${clientes.isEmpty()}">
+        Nenhum cliente cadastrado ainda. Use o botão Cadastrar cliente para começar.
+    </p>
+
+    <div class="tabela" th:unless="${clientes.isEmpty()}">
+        <table>
+            <thead>
+            <tr>
+                <th scope="col" class="num">Id</th>
+                <th scope="col">Nome</th>
+                <th scope="col">CPF</th>
+                <th scope="col">E-mail</th>
+                <th scope="col" class="num">Contas</th>
+                <th scope="col"><span class="oculto">Ações</span></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="cliente : ${clientes}">
+                <td class="num" th:text="${cliente.id}">1</td>
+                <td><a th:href="@{/clientes/{id}(id=${cliente.id})}" th:text="${cliente.nome}">Nome do cliente</a></td>
+                <td class="cpf" th:text="${@fmt.cpf(cliente.cpf)}">000.000.000-00</td>
+                <td th:text="${cliente.email}">cliente@exemplo.com</td>
+                <td class="num" th:text="${cliente.quantidadeContas}">0</td>
+                <td class="acoes-linha">
+                    <a th:href="@{/clientes/{id}/editar(id=${cliente.id})}">Editar</a>
+                    <form method="post" th:action="@{/clientes/{id}/excluir(id=${cliente.id})}"
+                          onsubmit="return confirm('Excluir este cliente? A operação não pode ser desfeita.');">
+                        <button type="submit" class="link-perigo">Excluir</button>
+                    </form>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: rodape}"></footer>
+</body>
+</html>

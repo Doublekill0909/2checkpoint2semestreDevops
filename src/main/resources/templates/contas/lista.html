@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Contas')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: topo('contas')}"></header>
+
+<main class="pagina">
+    <div th:replace="~{fragments/layout :: alertas}"></div>
+
+    <div class="cabecalho-pagina">
+        <div>
+            <h1 th:text="${titular != null ? 'Contas de ' + titular.nome : 'Contas'}">Contas</h1>
+            <p class="subtitulo"
+               th:text="${contas.size() == 1 ? '1 conta' : contas.size() + ' contas'}">0 contas</p>
+        </div>
+        <a class="botao botao--primario"
+           th:href="${titular != null} ? @{/contas/nova(clienteId=${titular.id})} : @{/contas/nova}">Abrir conta</a>
+    </div>
+
+    <p class="filtro" th:if="${titular != null}">
+        Exibindo só as contas deste titular. <a th:href="@{/contas}">Ver todas as contas</a>
+    </p>
+
+    <p class="vazio" th:if="${contas.isEmpty()}">
+        Nenhuma conta encontrada. Use o botão Abrir conta para criar a primeira.
+    </p>
+
+    <div class="tabela" th:unless="${contas.isEmpty()}">
+        <table>
+            <thead>
+            <tr>
+                <th scope="col" class="num">Id</th>
+                <th scope="col">Agência / conta</th>
+                <th scope="col">Titular</th>
+                <th scope="col">Tipo</th>
+                <th scope="col">Abertura</th>
+                <th scope="col">Situação</th>
+                <th scope="col" class="num">Saldo</th>
+                <th scope="col"><span class="oculto">Ações</span></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="conta : ${contas}">
+                <td class="num" th:text="${conta.id}">1</td>
+                <td class="numero-conta" th:text="${conta.agencia} + ' / ' + ${conta.numero}">0001 / 12345-6</td>
+                <td><a th:href="@{/clientes/{id}(id=${conta.clienteId})}" th:text="${conta.clienteNome}">Titular</a></td>
+                <td th:text="${conta.tipo.descricao}">Conta corrente</td>
+                <td th:text="${@fmt.data(conta.dataAbertura)}">01/01/2026</td>
+                <td><span class="situacao" th:classappend="${conta.ativa} ? 'situacao--ativa' : 'situacao--inativa'"
+                          th:text="${conta.ativa} ? 'Ativa' : 'Inativa'">Ativa</span></td>
+                <td class="num" th:text="${@fmt.moeda(conta.saldo)}">R$ 0,00</td>
+                <td class="acoes-linha">
+                    <a th:href="@{/contas/{id}/editar(id=${conta.id})}">Editar</a>
+                    <form method="post" th:action="@{/contas/{id}/excluir(id=${conta.id})}"
+                          onsubmit="return confirm('Excluir esta conta? A operação não pode ser desfeita.');">
+                        <button type="submit" class="link-perigo">Excluir</button>
+                    </form>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: rodape}"></footer>
+</body>
+</html>

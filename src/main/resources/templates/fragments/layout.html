@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(titulo)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${titulo} + ' | DimDim'">DimDim</title>
+    <link rel="icon" type="image/svg+xml" th:href="@{/img/favicon.svg}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,600..800&display=swap">
+    <link rel="stylesheet" th:href="@{/css/dimdim.css}">
+</head>
+<body>
+
+<header th:fragment="topo(secao)" class="topo">
+    <div class="topo__conteudo">
+        <a class="marca" th:href="@{/}">
+            <span class="marca__nome">dimdim</span>
+            <span class="marca__descricao">banco digital</span>
+        </a>
+        <nav class="menu" aria-label="Seções">
+            <a class="menu__item" th:href="@{/}"
+               th:classappend="${secao == 'inicio'} ? 'menu__item--ativo'">Início</a>
+            <a class="menu__item" th:href="@{/clientes}"
+               th:classappend="${secao == 'clientes'} ? 'menu__item--ativo'">Clientes</a>
+            <a class="menu__item" th:href="@{/contas}"
+               th:classappend="${secao == 'contas'} ? 'menu__item--ativo'">Contas</a>
+        </nav>
+    </div>
+</header>
+
+<div th:fragment="alertas" class="alertas">
+    <p class="alerta alerta--sucesso" th:if="${sucesso}" th:text="${sucesso}" role="status">Operação concluída.</p>
+    <p class="alerta alerta--erro" th:if="${erro}" th:text="${erro}" role="alert">Falha na operação.</p>
+</div>
+
+<footer th:fragment="rodape" class="rodape">
+    <div class="rodape__conteudo">
+        <p>DimDim é um projeto acadêmico do Grupo Vitalis para a FIAP e não guarda dados reais de clientes.</p>
+        <p th:if="${ambiente != null}" th:text="${ambiente.descricao()}">Execução local.</p>
+    </div>
+</footer>
+
+</body>
+</html>

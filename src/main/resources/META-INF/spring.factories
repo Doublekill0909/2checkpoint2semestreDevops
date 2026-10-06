@@ -1,0 +1,5 @@
+# Carrega o arquivo .env antes de qualquer resolucao de placeholder, para que a
+# aplicacao suba pela IDE e por ./mvnw spring-boot:run sem exigir que alguem
+# exporte as variaveis manualmente antes. No App Service o .env nao existe e
+# as variaveis chegam como app settings.
+org.springframework.boot.EnvironmentPostProcessor=fiap.dimdim.config.ConfiguracaoDotenv
