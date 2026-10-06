@@ -2,7 +2,7 @@
 
 O **DimDim** é o banco digital do estudo de caso da disciplina, e esta aplicação web, escrita em **Java 21 + Spring Boot 4**, é o seu sistema de cadastro, no qual o operador do banco cadastra clientes e abre, altera e encerra as contas de cada um.
 
-Este repositório contém a entrega do **2º Checkpoint do 2º semestre de DevOps Tools & Cloud Computing (Aplicações e Banco em Nuvem)**. A aplicação roda no **Azure App Service** (PaaS, Linux, Java SE 21), grava os dados no **Azure SQL Database** (PaaS, sem nenhum container), é monitorada pelo **Application Insights** e chega à nuvem por um deploy automatizado com **Azure CLI e GitHub Actions**. Ela foi criada para este checkpoint e não reaproveita a entrega da Sprint 3.
+Este repositório contém a entrega do **2º Checkpoint do 2º semestre de DevOps Tools & Cloud Computing (Aplicações e Banco em Nuvem)**. A aplicação roda no **Azure App Service** (PaaS, Linux, Java SE 21), grava os dados no **Azure SQL Database** (PaaS, sem nenhum container), é monitorada pelo **Application Insights** e chega à nuvem por um deploy automatizado com **Azure CLI e GitHub Actions**.
 
 ---
 
@@ -18,7 +18,7 @@ Este repositório contém a entrega do **2º Checkpoint do 2º semestre de DevOp
 
 - **Repositório GitHub**: https://github.com/Doublekill0909/2checkpoint2semestreDevops
 - **Vídeo no YouTube**: _link incluído após a gravação_
-- **Aplicação na nuvem**: https://rm566234-dimdim.azurewebsites.net (no ar enquanto os recursos do checkpoint existirem; o endereço exato é exibido pelos scripts `04` e `06`)
+- **Aplicação na nuvem**: https://rm566234-dimdim.azurewebsites.net
 
 ---
 

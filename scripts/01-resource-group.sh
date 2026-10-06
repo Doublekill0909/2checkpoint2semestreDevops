@@ -29,7 +29,7 @@ echo "[2/4] Conferindo se a regiao ${LOCATION} e permitida na subscription..."
 # so depois de varios minutos -- melhor descobrir agora.
 PERMITIDAS=$(az policy assignment list --disable-scope-strict-match \
   --query "[?parameters.listOfAllowedLocations].parameters.listOfAllowedLocations.value[]" \
-  -o tsv 2>/dev/null | sort -u | tr '\n' ' ' || true)
+  -o tsv 2>/dev/null | tr -d '\r' | sort -u | tr '\n' ' ' || true)
 if [[ -z "${PERMITIDAS// /}" ]]; then
   echo "      Nenhuma politica de regioes encontrada; seguindo com ${LOCATION}."
 elif [[ " ${PERMITIDAS} " == *" ${LOCATION} "* && " ${PERMITIDAS} " == *" ${SQL_LOCATION} "* ]]; then
