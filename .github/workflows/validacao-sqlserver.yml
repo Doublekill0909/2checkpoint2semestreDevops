@@ -1,0 +1,161 @@
+# Workflow TEMPORARIO de validacao (branch validacao/sqlserver, sera apagada).
+# Roda o DDL real e a aplicacao contra um SQL Server 2022, o mesmo motor do
+# Azure SQL Database, para conferir sintaxe T-SQL, idempotencia, usuario
+# contido, ddl-auto=validate e o CRUD ponta a ponta.
+name: Validacao temporaria com SQL Server 2022
+
+on:
+  push:
+    branches: [ 'validacao/**' ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sqlserver:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Empacotar
+        run: ./mvnw -B -ntp -DskipTests package
+
+      - name: Subir SQL Server 2022 e instalar o go-sqlcmd
+        run: |
+          SA="Sa$(openssl rand -hex 10)!A1"
+          APP="Ap$(openssl rand -hex 10)'&B2"
+          echo "::add-mask::$SA"; echo "::add-mask::$APP"
+          { echo "SA_PASS=$SA"; echo "APP_PASS=$APP"; } >> "$GITHUB_ENV"
+          docker run -d --name mssql -e ACCEPT_EULA=Y -e "MSSQL_SA_PASSWORD=$SA" -p 1433:1433 \
+            -v "$PWD/scripts:/scripts:ro" mcr.microsoft.com/mssql/server:2022-latest
+          curl -sSL -o sqlcmd.tar.bz2 https://github.com/microsoft/go-sqlcmd/releases/latest/download/sqlcmd-linux-amd64.tar.bz2
+          mkdir -p gosql && tar -xjf sqlcmd.tar.bz2 -C gosql
+          echo "::notice title=go-sqlcmd::$(./gosql/sqlcmd --version | head -1)"
+          for i in $(seq 1 90); do
+            if docker exec mssql /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$SA" -Q "SELECT 1" >/dev/null 2>&1; then
+              echo "SQL Server pronto"; exit 0; fi
+            sleep 2
+          done
+          echo "::error title=SQL Server::nao subiu"; docker logs mssql | tail -30; exit 1
+
+      - name: Criar banco contido (como o Azure SQL Database)
+        run: |
+          docker exec mssql /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$SA_PASS" -b -Q \
+            "EXEC sp_configure 'contained database authentication', 1; RECONFIGURE; CREATE DATABASE [db-dimdim]; ALTER DATABASE [db-dimdim] SET CONTAINMENT = PARTIAL;"
+
+      - name: DDL - 1a execucao (sqlcmd ODBC, mesmas flags do 02-sql.sh)
+        run: |
+          docker exec mssql /opt/mssql-tools18/bin/sqlcmd -C -S localhost -d db-dimdim -U sa -P "$SA_PASS" \
+            -b -W -s " | " -i /scripts/script_bd.sql | tee ddl1.txt
+          echo "::notice title=DDL 1a execucao::$(sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' ddl1.txt)"
+
+      - name: DDL - 2a execucao (go-sqlcmd, idempotencia)
+        run: |
+          SQLCMDPASSWORD="$SA_PASS" ./gosql/sqlcmd -S "tcp:localhost,1433" -d db-dimdim -U sa -C \
+            -b -W -s " | " -i scripts/script_bd.sql > ddl2.txt
+          echo "::notice title=DDL 2a execucao::$(wc -l < ddl2.txt) linhas, sem erro"
+
+      - name: Usuario da aplicacao (mesma renderizacao do 02-sql.sh), duas vezes
+        run: |
+          APP_DB_USER=dimdim_app
+          APP_DB_PASSWORD="$APP_PASS"
+          SENHA_SQL="${APP_DB_PASSWORD//\'/\'\'}"
+          CONTEUDO="$(<scripts/script_usuario_app.sql)"
+          CONTEUDO="${CONTEUDO//__APP_DB_USER__/"${APP_DB_USER}"}"
+          CONTEUDO="${CONTEUDO//__APP_DB_PASSWORD__/"${SENHA_SQL}"}"
+          ( umask 077 && printf '%s\n' "${CONTEUDO}" > /tmp/usuario_app.sql )
+          for vez in 1 2; do
+            SQLCMDPASSWORD="$SA_PASS" ./gosql/sqlcmd -S "tcp:localhost,1433" -d db-dimdim -U sa -C \
+              -b -W -s " | " -i /tmp/usuario_app.sql | tee usuario.txt
+          done
+          echo "::notice title=Usuario da aplicacao::$(sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' usuario.txt)"
+          # O usuario da aplicacao nao pode criar tabelas (minimo privilegio)
+          if SQLCMDPASSWORD="$APP_PASS" ./gosql/sqlcmd -S "tcp:localhost,1433" -d db-dimdim -U dimdim_app -C -b \
+               -Q "CREATE TABLE dbo.nao_deveria (id INT)" > priv.txt 2>&1; then
+            echo "::error title=Minimo privilegio::o usuario da aplicacao conseguiu criar tabela"; exit 1
+          fi
+          echo "::notice title=Minimo privilegio::CREATE TABLE recusado para dimdim_app: $(tr '\n' ' ' < priv.txt | cut -c1-200)"
+
+      - name: Subir a aplicacao contra o SQL Server (ddl-auto=validate)
+        run: |
+          export DB_URL="jdbc:sqlserver://localhost:1433;database=db-dimdim;encrypt=true;trustServerCertificate=true;loginTimeout=30;"
+          export DB_USER=dimdim_app
+          export DB_PASSWORD="$APP_PASS"
+          nohup java -jar target/dimdim.jar > app.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8080/actuator/health | grep -q '"UP"'; then
+              echo "::notice title=Subida::$(grep -E 'Started DimdimApplication|HHH|Hibernate' app.log | tail -5 | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error title=Subida falhou::$(tail -80 app.log | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')"
+          exit 1
+
+      - name: CRUD ponta a ponta (API, formularios e telas)
+        run: |
+          set -o pipefail
+          base=http://localhost:8080
+          falhar() { echo "::error title=CRUD::$1"; exit 1; }
+          json() { python3 -c "import sys,json; print(json.load(sys.stdin)$1)"; }
+
+          c1=$(curl -sf -X POST $base/api/clientes -H 'Content-Type: application/json' \
+            -d '{"nome":"João da Conceição","cpf":"123.456.789-09","email":"Joao@Exemplo.com","telefone":"(11) 91234-5678","dataNascimento":"1990-05-20"}') || falhar "POST cliente"
+          cid=$(echo "$c1" | json "['id']")
+          nome=$(curl -sf $base/api/clientes/$cid | json "['nome']")
+          [ "$nome" = "João da Conceição" ] || falhar "acentos nao preservados: $nome"
+
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST $base/clientes \
+            --data-urlencode 'nome=Maria Conceição' -d 'cpf=98765432100' -d 'email=maria@exemplo.com' -d 'telefone=' -d 'dataNascimento=1985-03-10')
+          [ "$code" = "302" ] || falhar "POST /clientes (formulario) devolveu $code"
+
+          k1=$(curl -sf -X POST $base/api/contas -H 'Content-Type: application/json' \
+            -d "{\"clienteId\":$cid,\"tipo\":\"CORRENTE\",\"saldo\":1500.50,\"ativa\":true}") || falhar "POST conta"
+          kid=$(echo "$k1" | json "['id']")
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST $base/contas -d "clienteId=$cid" -d 'tipo=POUPANCA' -d 'saldo=250.00' -d 'ativa=true' -d '_ativa=on')
+          [ "$code" = "302" ] || falhar "POST /contas (formulario) devolveu $code"
+
+          for p in / /clientes /clientes/novo /clientes/$cid /clientes/$cid/editar /contas /contas/nova "/contas?clienteId=$cid" /contas/$kid/editar; do
+            code=$(curl -s -o pagina.html -w '%{http_code}' "$base$p")
+            [ "$code" = "200" ] || falhar "GET $p devolveu $code"
+          done
+          grep -q "Conta poupança" pagina.html || true
+
+          curl -sf -X PUT $base/api/clientes/$cid -H 'Content-Type: application/json' \
+            -d '{"nome":"João da Conceição Lima","cpf":"12345678909","email":"joao.lima@exemplo.com","telefone":null,"dataNascimento":"1990-05-20"}' >/dev/null || falhar "PUT cliente"
+          curl -sf -X PUT $base/api/contas/$kid -H 'Content-Type: application/json' \
+            -d "{\"clienteId\":$cid,\"tipo\":\"SALARIO\",\"saldo\":99.90,\"ativa\":false}" >/dev/null || falhar "PUT conta"
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X DELETE $base/api/clientes/$cid)
+          [ "$code" = "409" ] || falhar "DELETE de titular com contas devolveu $code"
+
+          SQLCMDPASSWORD="$APP_PASS" ./gosql/sqlcmd -S "tcp:localhost,1433" -d db-dimdim -U dimdim_app -C \
+            -b -W -s " | " -i scripts/consultas_crud.sql | tee consulta.txt
+          echo "::notice title=SELECT apos INSERT e UPDATE::$(sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' consulta.txt)"
+
+          # DEFAULT do banco (fuso de Brasilia) num INSERT direto, sem a aplicacao
+          SQLCMDPASSWORD="$SA_PASS" ./gosql/sqlcmd -S "tcp:localhost,1433" -d db-dimdim -U sa -C -b -W -s " | " -Q \
+            "INSERT INTO dbo.tb_cliente (nome, cpf, email, data_nascimento) VALUES (N'Direto no banco', N'11122233344', N'direto@exemplo.com', '2000-01-01'); SELECT data_cadastro, SYSUTCDATETIME() AS agora_utc FROM dbo.tb_cliente WHERE cpf = N'11122233344';" | tee padrao.txt
+          echo "::notice title=DEFAULT data_cadastro::$(sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' padrao.txt)"
+
+          for id in $(curl -sf "$base/api/contas?clienteId=$cid" | python3 -c 'import sys,json; print(" ".join(str(c["id"]) for c in json.load(sys.stdin)))'); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -X DELETE $base/api/contas/$id); [ "$code" = "204" ] || falhar "DELETE conta $id devolveu $code"
+          done
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X DELETE $base/api/clientes/$cid); [ "$code" = "204" ] || falhar "DELETE cliente devolveu $code"
+          code=$(curl -s -o /dev/null -w '%{http_code}' $base/api/clientes/$cid); [ "$code" = "404" ] || falhar "GET apos DELETE devolveu $code"
+
+          SQLCMDPASSWORD="$APP_PASS" ./gosql/sqlcmd -S "tcp:localhost,1433" -d db-dimdim -U dimdim_app -C \
+            -b -W -s " | " -i scripts/consultas_crud.sql > consulta2.txt
+          echo "::notice title=SELECT apos DELETE::$(sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' consulta2.txt)"
+
+      - name: Log da aplicacao em caso de falha
+        if: failure()
+        run: |
+          [ -f app.log ] && echo "::error title=app.log::$(tail -60 app.log | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')" || true
