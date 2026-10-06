@@ -525,6 +525,7 @@ A regra de firewall `AllowAzureServices` é o ponto em que esta entrega troca se
 | Sintoma | Causa provável e solução |
 |---|---|
 | `RequestDisallowedByPolicy` ou o script `01` lista outras regiões | A subscription de estudante não aceita a região. Rode `export LOCATION=<região permitida>` e repita a partir do script `01`. |
+| A criação do plano do App Service falha por cota (`quota`) | Algumas subscriptions de estudante não têm cota para o B1 na região. Rode `export APP_SERVICE_SKU=F1` e repita o script `04`; o plano gratuito funciona, mas sem Always On, então a primeira requisição depois de um período ocioso é mais lenta. |
 | `02-sql.sh` informa que o `sqlcmd` não está instalado | O script foi executado fora do Cloud Shell. Execute-o no Azure Cloud Shell, que já traz o `sqlcmd`. |
 | O banco recusa conexões no `02-sql.sh` ou no `07-consultar-banco.sh` | O IP de onde o comando roda mudou. Rode o `02-sql.sh` de novo, que é idempotente e recria a regra `AllowClientIP`. |
 | O deploy termina, mas o health check do workflow não responde `UP` | A JVM não conseguiu subir. Veja o motivo com `az webapp log tail -g rg-rm566234-dimdim -n rm566234-dimdim`; um erro de `Schema validation` indica que o DDL não foi aplicado (rode o `02-sql.sh`). |
