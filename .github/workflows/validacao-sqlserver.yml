@@ -177,6 +177,32 @@ jobs:
           curl -sf $base/contas/$k/editar -o pagina.html && capturar contas-editar
           curl -s $base/clientes/987654 -o pagina.html && capturar erro-404
 
+      - name: Capturar respostas JSON reais da API para o README
+        run: |
+          base=http://localhost:8080
+          req() { # metodo caminho [corpo]
+            if [ -n "${3:-}" ]; then
+              curl -s -X "$1" "$base$2" -H 'Content-Type: application/json' -d "$3" -D cab.txt -o corpo.txt
+            else
+              curl -s -X "$1" "$base$2" -D cab.txt -o corpo.txt
+            fi
+            st=$(head -1 cab.txt | tr -d '\r'); loc=$(grep -i '^location:' cab.txt | tr -d '\r' || true)
+            echo "::notice title=api $1 $2::$(printf '%s\n%s\n' "$st" "$loc"; python3 -m json.tool corpo.txt 2>/dev/null | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' || cat corpo.txt)"
+          }
+          capt() { python3 -c 'import sys,json; print(json.load(sys.stdin)["id"])' < corpo.txt; }
+          req POST /api/clientes '{"nome":"Beatriz Ramos","cpf":"390.533.447-05","email":"Beatriz.Ramos@Exemplo.com","telefone":"(11) 97777-1234","dataNascimento":"1994-08-12"}'
+          cid=$(capt)
+          req GET /api/clientes/$cid
+          req PUT /api/clientes/$cid '{"nome":"Beatriz Ramos Alves","cpf":"39053344705","email":"beatriz.alves@exemplo.com","telefone":"(11) 97777-1234","dataNascimento":"1994-08-12"}'
+          req POST /api/contas "{\"clienteId\":$cid,\"tipo\":\"CORRENTE\",\"saldo\":2500.00,\"ativa\":true}"
+          kid=$(capt)
+          req GET "/api/contas?clienteId=$cid"
+          req PUT /api/contas/$kid "{\"clienteId\":$cid,\"tipo\":\"POUPANCA\",\"saldo\":3100.40,\"ativa\":true}"
+          req DELETE /api/clientes/$cid
+          req POST /api/clientes '{"nome":"","cpf":"123","email":"sem-arroba","dataNascimento":"2999-01-01"}'
+          req DELETE /api/contas/$kid
+          req GET /api/contas/$kid
+
       - name: Log da aplicacao em caso de falha
         if: failure()
         run: |
