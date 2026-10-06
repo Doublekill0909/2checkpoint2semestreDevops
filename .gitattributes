@@ -1,0 +1,25 @@
+# =====================================================================
+# Scripts shell, SQL e o Maven Wrapper precisam de LF puro.
+#
+# Por que: os scripts de scripts/ sao executados no Azure Cloud Shell
+# (Linux) e o mvnw roda no runner Linux do GitHub Actions. Se o Git faz
+# checkout com CRLF (o padrao em maquinas Windows com
+# core.autocrlf=true), o interpretador vira "bash\r", que nao existe, e
+# o script falha com "env: 'bash\r': No such file or directory".
+#
+# "eol=lf" forca LF tanto no repositorio quanto no checkout, em
+# qualquer SO e independente do core.autocrlf de quem clonar.
+# =====================================================================
+*.sh   text eol=lf
+*.sql  text eol=lf
+*.kql  text eol=lf
+mvnw   text eol=lf
+*.yml  text eol=lf
+
+# O wrapper do Windows continua com CRLF.
+*.cmd  text eol=crlf
+
+# Binarios
+*.png  binary
+*.jpg  binary
+*.pdf  binary
