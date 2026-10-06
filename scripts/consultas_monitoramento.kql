@@ -1,0 +1,69 @@
+// =====================================================================
+// DimDim - consultas KQL de monitoramento (usadas no video)
+//
+// As consultas 1 a 5 rodam no Application Insights (portal > appi-rm566234-dimdim
+// > Logs). As consultas 6 e 7 rodam no Log Analytics workspace
+// (log-rm566234-dimdim > Logs), que recebe as metricas do Azure SQL e os
+// logs do App Service pelos diagnostic settings.
+//
+// Rode uma consulta por vez: selecione o bloco e clique em Run.
+// =====================================================================
+
+
+// 1) Requisicoes HTTP da aplicacao: volume, falhas e tempo de resposta
+requests
+| where timestamp > ago(1h)
+| summarize total = count(), falhas = countif(success == false), p95_ms = round(percentile(duration, 95), 1) by name
+| order by total desc
+
+
+// 2) Chamadas que a aplicacao fez ao Azure SQL (dependencias JDBC)
+dependencies
+| where timestamp > ago(1h) and type == "SQL"
+| project timestamp, target, name, comando = data, duracao_ms = round(duration, 1), success
+| order by timestamp desc
+
+
+// 3) Cada operacao do CRUD com os comandos SQL que ela gerou no banco.
+//    O operation_Id liga a requisicao HTTP (ex.: POST /clientes) aos
+//    INSERT/UPDATE/DELETE executados dentro dela.
+requests
+| where timestamp > ago(1h) and name !has "actuator"
+| project operation_Id, requisicao = name, inicio = timestamp
+| join kind=inner (
+    dependencies
+    | where timestamp > ago(1h) and type == "SQL"
+    | project operation_Id, comando = data, duracao_ms = round(duration, 1)
+  ) on operation_Id
+| project inicio, requisicao, comando, duracao_ms
+| order by inicio desc
+
+
+// 4) Logs da aplicacao (cada inclusao, alteracao e exclusao gera um log
+//    com o id do registro, sem CPF nem e-mail)
+traces
+| where timestamp > ago(1h) and message has_any ("Cliente", "Conta")
+| project timestamp, message, severityLevel
+| order by timestamp desc
+
+
+// 5) Excecoes registradas pelo agente
+exceptions
+| where timestamp > ago(24h)
+| summarize ocorrencias = count() by type, outerMessage
+| order by ocorrencias desc
+
+
+// 6) [Log Analytics] Metricas do Azure SQL Database em intervalos de 5 minutos
+AzureMetrics
+| where TimeGenerated > ago(1h) and ResourceProvider == "MICROSOFT.SQL"
+| where MetricName in ("dtu_consumption_percent", "cpu_percent", "connection_successful", "storage_percent")
+| summarize maximo = max(Maximum) by MetricName, bin(TimeGenerated, 5m)
+| order by TimeGenerated desc, MetricName asc
+
+
+// 7) [Log Analytics] Requisicoes registradas pelo proprio App Service
+AppServiceHTTPLogs
+| where TimeGenerated > ago(1h)
+| project TimeGenerated, CsMethod, CsUriStem, ScStatus, TimeTaken
+| order by TimeGenerated desc
