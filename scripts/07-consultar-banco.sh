@@ -26,4 +26,4 @@ SQL_FQDN=$(az sql server show -g "${RESOURCE_GROUP}" -n "${SQL_SERVER}" --query 
 echo "Consultando ${SQL_FQDN} / ${SQL_DB} em $(TZ=America/Sao_Paulo date '+%d/%m/%Y %H:%M:%S') (Brasilia)"
 SQLCMDPASSWORD="${APP_DB_PASSWORD}" sqlcmd \
   -S "tcp:${SQL_FQDN},1433" -d "${SQL_DB}" -U "${APP_DB_USER}" \
-  -b -W -s " | " -i ./consultas_crud.sql
+  -b -W -s "|" -i ./consultas_crud.sql

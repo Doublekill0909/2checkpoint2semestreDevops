@@ -94,7 +94,7 @@ executar_sql() {
   local arquivo="$1"
   SQLCMDPASSWORD="${SQL_ADMIN_PASSWORD}" sqlcmd \
     -S "tcp:${SQL_FQDN},1433" -d "${SQL_DB}" -U "${SQL_ADMIN_USER}" \
-    -b -W -s " | " -i "${arquivo}"
+    -b -W -s "|" -i "${arquivo}"
 }
 
 echo
