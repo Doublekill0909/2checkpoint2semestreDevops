@@ -187,9 +187,21 @@ class TelasTest {
     }
 
     @Test
-    void clienteInexistenteMostraPagina404() throws Exception {
+    void clienteInexistenteMostraPagina404ComRodape() throws Exception {
         mvc.perform(get("/clientes/{id}", 999999))
                 .andExpect(status().isNotFound())
-                .andExpect(content().string(containsString("Cliente 999999 não encontrado.")));
+                .andExpect(content().string(containsString("Cliente 999999 não encontrado.")))
+                .andExpect(content().string(containsString("Execução local")));
+    }
+
+    @Test
+    void emailSemDominioCompletoERecusado() throws Exception {
+        mvc.perform(post("/clientes")
+                        .param("nome", "Teste Email")
+                        .param("cpf", "44455566677")
+                        .param("email", "teste@exemplo")
+                        .param("dataNascimento", "1990-01-01"))
+                .andExpect(status().isOk())
+                .andExpect(model().attributeHasFieldErrors("cliente", "email"));
     }
 }
