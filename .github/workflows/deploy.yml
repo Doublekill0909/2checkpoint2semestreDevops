@@ -44,6 +44,28 @@ jobs:
       - name: Compilar, testar e empacotar
         run: ./mvnw -B -ntp verify
 
+      # Resume os relatorios do Surefire na pagina da execucao e em uma
+      # anotacao, para que o resultado dos testes fique visivel sem abrir o log.
+      - name: Resumo dos testes
+        if: always()
+        shell: python
+        run: |
+          import glob, os, xml.etree.ElementTree as ET
+          linhas, total, falhas, erros, ignorados = [], 0, 0, 0, 0
+          for caminho in sorted(glob.glob("target/surefire-reports/TEST-*.xml")):
+              suite = ET.parse(caminho).getroot()
+              t, f, e, s = (int(suite.get(k, 0)) for k in ("tests", "failures", "errors", "skipped"))
+              total, falhas, erros, ignorados = total + t, falhas + f, erros + e, ignorados + s
+              linhas.append(f"| {suite.get('name').split('.')[-1]} | {t} | {f} | {e} | {s} | {float(suite.get('time', 0)):.1f} |")
+              for caso in suite.iter("testcase"):
+                  for problema in list(caso.findall("failure")) + list(caso.findall("error")):
+                      msg = (problema.get("message") or problema.text or "").strip().replace("\n", " ")[:500]
+                      print(f"::error title={suite.get('name').split('.')[-1]}.{caso.get('name')}::{msg}")
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as resumo:
+              resumo.write("### Testes automatizados\n\n| Classe | Testes | Falhas | Erros | Ignorados | Tempo (s) |\n")
+              resumo.write("|---|---:|---:|---:|---:|---:|\n" + "\n".join(linhas) + "\n")
+          print(f"::notice title=Testes::{total} testes executados, {falhas} falhas, {erros} erros, {ignorados} ignorados")
+
       - name: Publicar o jar como artefato do workflow
         uses: actions/upload-artifact@v7
         with:
