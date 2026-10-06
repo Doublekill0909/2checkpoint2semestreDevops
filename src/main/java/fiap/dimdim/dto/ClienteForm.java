@@ -31,7 +31,7 @@ public class ClienteForm {
     private String cpf;
 
     @NotBlank(message = "Informe o e-mail.")
-    @Email(message = "Informe um e-mail válido.")
+    @Email(regexp = ".+@.+\\..+", message = "Informe um e-mail válido.")
     @Size(max = 120, message = "O e-mail deve ter no máximo 120 caracteres.")
     private String email;
 

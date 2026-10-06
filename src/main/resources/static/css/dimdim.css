@@ -403,7 +403,6 @@ tbody tr:hover td {
 
 .ficha--compacta {
     grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
-    margin-bottom: 1.5rem;
     padding: 1.1rem 1.25rem;
 }
 
@@ -435,8 +434,8 @@ tbody tr:hover td {
     min-width: 0;
 }
 
-.campo label,
-.campo legend {
+.campo > label:not(.opcao),
+.campo > legend {
     font-weight: 700;
     padding: 0;
 }
@@ -501,22 +500,26 @@ select:focus-visible {
 .opcao {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.55rem 0.95rem;
+    gap: 0.55rem;
+    padding: 0.6rem 1rem;
     border: 2px solid var(--linha);
     border-radius: 8px;
     background: var(--papel);
-    font-weight: 400;
+    font-weight: 600;
     cursor: pointer;
 }
 
-.opcao:has(input:checked) {
-    border-color: var(--grafite);
-    font-weight: 700;
+.opcao:hover {
+    border-color: var(--grafite-suave);
 }
 
-.campo label.opcao--caixa {
-    font-weight: 600;
+/* A opcao escolhida ganha a borda grafite e um fundo com o amarelo da marca. */
+.opcao:has(input:checked) {
+    border-color: var(--grafite);
+    background: #fff7cc;
+}
+
+.opcao--caixa {
     justify-self: start;
 }
 
