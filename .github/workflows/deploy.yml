@@ -1,0 +1,98 @@
+# =====================================================================
+# CI/CD do DimDim: build e testes em todo push e pull request; deploy no
+# Azure App Service em todo push na main (e quando disparado pelo
+# scripts/05-github-actions.sh).
+#
+# O deploy usa duas configuracoes do repositorio, gravadas pelo
+# scripts/05-github-actions.sh a partir do Azure CLI:
+#   - variable AZURE_WEBAPP_NAME .........: nome da Web App
+#   - secret AZURE_WEBAPP_PUBLISH_PROFILE : credencial de publicacao
+# Enquanto elas nao existem, o job de deploy e pulado em vez de falhar.
+# =====================================================================
+name: CI/CD - build, testes e deploy no Azure App Service
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Dois deploys nunca correm ao mesmo tempo; o mais novo espera o anterior.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build e testes (Maven, Java 21)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do repositorio
+        uses: actions/checkout@v7
+
+      - name: Configurar o JDK 21 (Temurin) com cache do Maven
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Compilar, testar e empacotar
+        run: ./mvnw -B -ntp verify
+
+      - name: Publicar o jar como artefato do workflow
+        uses: actions/upload-artifact@v7
+        with:
+          name: dimdim-jar
+          path: target/dimdim.jar
+          if-no-files-found: error
+          retention-days: 7
+
+  deploy:
+    name: Deploy no Azure App Service
+    needs: build
+    if: >-
+      github.ref == 'refs/heads/main'
+      && github.event_name != 'pull_request'
+      && vars.AZURE_WEBAPP_NAME != ''
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.webapp-url }}
+    steps:
+      - name: Baixar o jar gerado no build
+        uses: actions/download-artifact@v8
+        with:
+          name: dimdim-jar
+
+      # OneDeploy do tipo JAR: o App Service grava o arquivo como
+      # /home/site/wwwroot/app.jar e reinicia a JVM com a versao nova.
+      - name: Publicar na Web App
+        id: deploy
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: dimdim.jar
+          type: JAR
+
+      - name: Conferir a saude da aplicacao e do banco
+        env:
+          WEBAPP_URL: ${{ steps.deploy.outputs.webapp-url }}
+        run: |
+          url="${WEBAPP_URL%/}/actuator/health"
+          for tentativa in $(seq 1 30); do
+            status=$(curl -sL -o resposta.json -w '%{http_code}' --max-time 20 "$url" || true)
+            if [ "$status" = "200" ]; then
+              echo "Health: $(cat resposta.json)"
+              exit 0
+            fi
+            echo "Tentativa ${tentativa}/30: HTTP ${status}; aguardando a JVM subir..."
+            sleep 10
+          done
+          echo "::error::A aplicacao nao respondeu 200 em ${url}"
+          exit 1
