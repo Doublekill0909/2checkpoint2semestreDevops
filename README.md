@@ -19,7 +19,7 @@ Este repositório contém a entrega do **2º Checkpoint do 2º semestre de DevOp
 | RM561342 | Lucas Figueiredo Vieira | 2TDSPV |
 
 - **Repositório GitHub**: https://github.com/Doublekill0909/2checkpoint2semestreDevops
-- **Vídeo no YouTube**: _link incluído após a gravação_
+- **Vídeo no YouTube**: https://www.youtube.com/watch?v=fNpfYmmXyss
 - **Aplicação na nuvem**: https://rm566234-dimdim.azurewebsites.net
 
 ---
